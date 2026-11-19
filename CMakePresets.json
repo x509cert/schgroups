@@ -1,0 +1,26 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "vs2026-x64",
+      "displayName": "VS 2026, v145, x64, Windows SDK 10.0.28000",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "toolset": "v145,host=x64",
+      "binaryDir": "${sourceDir}/build/x64",
+      "cacheVariables": { "CMAKE_SYSTEM_VERSION": "10.0.28000.0" }
+    },
+    {
+      "name": "vs2026-arm64",
+      "inherits": "vs2026-x64",
+      "displayName": "VS 2026, v145, ARM64, Windows SDK 10.0.28000",
+      "architecture": "ARM64",
+      "toolset": "v145,host=x64",
+      "binaryDir": "${sourceDir}/build/arm64"
+    }
+  ],
+  "buildPresets": [
+    { "name": "x64-release", "configurePreset": "vs2026-x64", "configuration": "Release" },
+    { "name": "arm64-release", "configurePreset": "vs2026-arm64", "configuration": "Release" }
+  ]
+}

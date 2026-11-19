@@ -1,0 +1,7 @@
+/build/
+/.vs/
+/CMakeUserPresets.json
+*.pfx
+*.p12
+*.key
+*.pem
