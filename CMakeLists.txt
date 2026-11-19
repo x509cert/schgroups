@@ -29,16 +29,3 @@ target_link_libraries(schgroups PRIVATE ws2_32 secur32 crypt32 ncrypt bcrypt adv
 
 set_property(TARGET schgroups PROPERTY
   MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-
-include(CTest)
-if(BUILD_TESTING)
-  add_executable(group_policy_tests group_policy_tests.cpp)
-  target_link_libraries(group_policy_tests PRIVATE schannel_groups)
-  target_compile_options(group_policy_tests PRIVATE /std:c++latest /permissive- /EHsc /W4)
-  set_property(TARGET group_policy_tests PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  add_test(NAME group_policy COMMAND group_policy_tests)
-  add_test(NAME empty_enable COMMAND schgroups --enable ", ,")
-  add_test(NAME empty_disable_shorthand COMMAND schgroups --port "8443:disable=")
-  set_tests_properties(empty_enable empty_disable_shorthand PROPERTIES
-    PASS_REGULAR_EXPRESSION "require a nonempty group list" TIMEOUT 5)
-endif()

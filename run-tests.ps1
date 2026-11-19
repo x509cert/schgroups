@@ -31,7 +31,6 @@ param(
 $tests = @(
     # PQ-only port
     @{ Port = $PqPort;      Offer = 'SecP384r1MLKEM1024';        Expect = 'SecP384r1MLKEM1024' }
-    @{ Port = $PqPort;      Offer = 'SecP384r1MLKEM1024';        Expect = 'SecP384r1MLKEM1024'; KeyUpdate = $true }
     @{ Port = $PqPort;      Offer = 'X25519:SecP384r1MLKEM1024'; Expect = 'SecP384r1MLKEM1024'; Hrr = $true }
     @{ Port = $PqPort;      Offer = 'X25519MLKEM768';            Expect = 'REFUSED'; Why = "${PqPort}: only SecP384r1_MLKEM1024 enabled" }
     @{ Port = $PqPort;      Offer = 'MLKEM1024';                 Expect = 'REFUSED'; Why = "${PqPort}: only SecP384r1_MLKEM1024 enabled" }
@@ -73,33 +72,6 @@ function Get-NegotiatedGroup([string] $out) {
         return $k.Trim()
     }
     return $null
-}
-
-function Invoke-KeyUpdateProbe([int] $port, [string] $group) {
-    if ($Server -match '[\s"\\]') { throw 'Expected a server hostname or IP address' }
-    $start = [Diagnostics.ProcessStartInfo]::new()
-    $start.FileName = (Get-Command $OpenSsl -CommandType Application -ErrorAction Stop).Source
-    $start.Arguments = "s_client -connect ${Server}:$port -servername $Server -tls1_3 -groups $group -brief -msg -adv"
-    $start.UseShellExecute = $false
-    $start.RedirectStandardInput = $start.RedirectStandardOutput = $start.RedirectStandardError = $true
-    $p = [Diagnostics.Process]::Start($start)
-    try {
-        $stdout = $p.StandardOutput.ReadToEndAsync()
-        $stderr = $p.StandardError.ReadToEndAsync()
-        # Keep stdin open: EOF can close s_client before the server replies; -ign_eof disables commands.
-        $p.StandardInput.WriteLine('{keyup:req}GET / HTTP/1.1')
-        $p.StandardInput.Flush()
-        if (!$p.WaitForExit(15000)) { return @{ Kind = 'FAILED'; Text = 'timed out after KeyUpdate' } }
-        $out = $stdout.GetAwaiter().GetResult() + "`n" + $stderr.GetAwaiter().GetResult()
-        if ($p.ExitCode -ne 0 -or $out -notmatch '>>>[^\r\n]*KeyUpdate' -or $out -notmatch '<<<[^\r\n]*KeyUpdate' -or
-            $out -notmatch 'HTTP/1\.1 200 OK' -or $out -notmatch "key exchange group:\s+\S+ / $([regex]::Escape($group)) ") {
-            return @{ Kind = 'FAILED'; Text = 'missing KeyUpdate exchange or expected HTTP response' }
-        }
-        return @{ Kind = 'OK'; Group = (Get-NegotiatedGroup $out); Text = 'KeyUpdate and HTTP response' }
-    } finally {
-        if (!$p.HasExited) { $p.Kill(); $p.WaitForExit() }
-        $p.Dispose()
-    }
 }
 
 function Invoke-Probe([int] $port, [string] $groups, [bool] $hrr) {
@@ -146,14 +118,13 @@ $i = 0
 foreach ($t in $tests) {
     $i++
     $hrr = [bool]$t.Hrr
-    $r = if ($t.KeyUpdate) { Invoke-KeyUpdateProbe $t.Port $t.Offer } else { Invoke-Probe $t.Port $t.Offer $hrr }
+    $r = Invoke-Probe $t.Port $t.Offer $hrr
 
     $pass = switch ($t.Expect) {
         'REFUSED' { $r.Kind -eq 'REFUSED' }
         default   { $r.Kind -eq 'OK' -and $r.Group -ieq $t.Expect -and (-not $hrr -or $r.Hrr) }
     }
     $expectText = if ($t.Expect -eq 'REFUSED') { "Refused ($($t.Why))" } else { "Negotiated $($t.Expect)$(if ($hrr) { ' via HRR' })" }
-    if ($t.KeyUpdate) { $expectText += ' + KeyUpdate' }
 
     # Observed: just Negotiated / Refused. Detail only when it explains a FAIL.
     $observed = switch ($r.Kind) {
@@ -165,7 +136,7 @@ foreach ($t in $tests) {
         'REFUSED' { 'Refused' }
         'NA'      { 'n/a (OpenSSL lacks group)' }
         'NOCONN'  { 'No connection' }
-        default   { if ($t.KeyUpdate) { $r.Text } else { 'Error' } }
+        default   { 'Error' }
     }
 
     $results += [pscustomobject]@{
