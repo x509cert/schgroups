@@ -10,9 +10,9 @@ The OS configuration is never changed.
 
 ## How it works
 
-![schgroups threads, per-port group policies and Schannel calls](docs/architecture.png)
+[![schgroups threads, per-port group policies and Schannel calls](docs/architecture.png)](docs/architecture.png)
 
-*Vector version: [docs/architecture.svg](docs/architecture.svg)*
+*Click the diagram for the full-size image ([docs/architecture.png](docs/architecture.png)).*
 
 The example shows the four-port setup used by `run-tests.ps1`.
 
@@ -168,17 +168,7 @@ Each connection logs the protocol, cipher suite and negotiated group. The server
 
 ## Setting the OS default groups
 
-`run-tests.ps1` expects the OS list to hold these 7 groups, in this order: 
-
-- `SecP384r1_MLKEM1024`
-- `X25519_MLKEM768`
-- `curve25519`, 
-- `MLKEM1024`, 
-- `NistP384`, 
-- `NistP256`, 
-- `NistP521` 
-
-To set them, run this from an elevated prompt:
+`run-tests.ps1` expects the OS list to hold these 7 groups, in this order: `SecP384r1_MLKEM1024`, `X25519_MLKEM768`, `curve25519`, `MLKEM1024`, `NistP384`, `NistP256`, `NistP521`. To set them, run this from an elevated prompt:
 
 ```powershell
 .\set-default-groups.ps1
@@ -186,9 +176,9 @@ To set them, run this from an elevated prompt:
 
 It disables every group, then enables the seven in order, and prints the result.
 
-- **Brief gap:** while it runs, the machine has no key-exchange groups, so new TLS connections can fail. If it stops partway through, run it again.
+- **Brief gap:** while it runs, the machine has no key-exchange groups, so new TLS connections, including new RDP sessions, can fail. If it stops partway through, run it again.
 - **Group Policy wins:** a Group Policy `ECC Curve Order` setting overrides this.
-- **Restart schgroups** afterwards; it reads the list once, at startup, this is just the way this code works, however.
+- **Restart schgroups** afterwards; it reads the list once, at startup.
 
 ## Testing with OpenSSL (3.5+)
 
